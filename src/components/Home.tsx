@@ -5,7 +5,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Search, MoreVertical, Edit2, Trash2, Copy, Clock, Layers, X, Pin, PinOff, Tag, Palette, Shuffle, Type, Settings, Moon, Check, Tv, CircleDot, ChevronRight, ChevronLeft, ListTodo, Sparkles, Target, Smile, Frown, Image as ImageIcon, Video, Link, ChevronDown, ChevronUp, Mic, Music, BookOpen, Folder, FolderPlus, Maximize2, FileText, CheckSquare, Calendar, Undo2, Redo2, Camera, Table, Download } from 'lucide-react';
+import { Plus, Search, MoreVertical, Edit2, Trash2, Copy, Clock, Layers, X, Pin, PinOff, Tag, Palette, Shuffle, Type, Settings, Moon, Check, Tv, CircleDot, ChevronRight, ChevronLeft, ListTodo, Sparkles, Target, Smile, Frown, Image as ImageIcon, Video, Link, ChevronDown, ChevronUp, Mic, Music, BookOpen, Folder, FolderPlus, Maximize2, FileText, CheckSquare, Calendar, Undo2, Redo2, Camera, Table, Download, Upload } from 'lucide-react';
 import { HexColorPicker } from 'react-colorful';
 import { Routine, Activity, CategoryDefinition, Habit } from '../types.ts';
 import { generateId } from '../utils.ts';
@@ -40,6 +40,19 @@ const getDateAfterDays = (days: number) => {
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+};
+
+const formatDeadlineDate = (dateStr?: string) => {
+  if (!dateStr) return '';
+  try {
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return dateStr;
+  } catch (e) {
+    return dateStr;
+  }
 };
 
 const getDeadlineStatus = (deadlineDate?: string) => {
@@ -117,6 +130,101 @@ export default function Home({
   currentDate
 }: HomeProps) {
   const [search, setSearch] = useState('');
+  const [exportingData, setExportingData] = useState(false);
+  const [importingData, setImportingData] = useState(false);
+  const importInputRef = useRef<HTMLInputElement>(null);
+
+  const handleExportDataZip = async () => {
+    try {
+      setExportingData(true);
+      const dataToExport = {
+        droid_routines: localStorage.getItem('droid_routines'),
+        droid_completed_routines: localStorage.getItem('droid_completed_routines'),
+        droid_categories: localStorage.getItem('droid_categories'),
+        droid_global_habits: localStorage.getItem('droid_global_habits'),
+        droid_global_habit_cats: localStorage.getItem('droid_global_habit_cats'),
+        droid_sleep_time: localStorage.getItem('droid_sleep_time'),
+        droid_rest_start_time: localStorage.getItem('droid_rest_start_time'),
+        droid_sensor_changed_at: localStorage.getItem('droid_sensor_changed_at'),
+        droid_sensor_tolerance: localStorage.getItem('droid_sensor_tolerance'),
+      };
+
+      const response = await fetch('/api/export-data-zip', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(dataToExport),
+      });
+
+      if (!response.ok) {
+        throw new Error('Impossibile esportare lo ZIP dei dati.');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'droid-routine-dati.zip';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error(err);
+      alert('Errore durante l\'esportazione dello ZIP dei dati.');
+    } finally {
+      setExportingData(false);
+    }
+  };
+
+  const handleImportDataZip = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setImportingData(true);
+      const arrayBuffer = await file.arrayBuffer();
+
+      const response = await fetch('/api/import-data-zip', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/zip',
+        },
+        body: arrayBuffer,
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || 'Impossibile importare lo ZIP dei dati.');
+      }
+
+      const imported = await response.json();
+      
+      if (imported.droid_routines !== undefined) {
+        if (imported.droid_routines) localStorage.setItem('droid_routines', imported.droid_routines);
+        if (imported.droid_completed_routines) localStorage.setItem('droid_completed_routines', imported.droid_completed_routines);
+        if (imported.droid_categories) localStorage.setItem('droid_categories', imported.droid_categories);
+        if (imported.droid_global_habits) localStorage.setItem('droid_global_habits', imported.droid_global_habits);
+        if (imported.droid_global_habit_cats) localStorage.setItem('droid_global_habit_cats', imported.droid_global_habit_cats);
+        if (imported.droid_sleep_time) localStorage.setItem('droid_sleep_time', imported.droid_sleep_time);
+        if (imported.droid_rest_start_time) localStorage.setItem('droid_rest_start_time', imported.droid_rest_start_time);
+        if (imported.droid_sensor_changed_at) localStorage.setItem('droid_sensor_changed_at', imported.droid_sensor_changed_at);
+        if (imported.droid_sensor_tolerance) localStorage.setItem('droid_sensor_tolerance', imported.droid_sensor_tolerance);
+        
+        alert('Dati importati con successo! L\'applicazione verrà ricaricata.');
+        window.location.reload();
+      } else {
+        throw new Error('Lo ZIP caricato non contiene dati validi.');
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert('Errore durante l\'importazione dello ZIP: ' + err.message);
+    } finally {
+      setImportingData(false);
+      if (e.target) e.target.value = '';
+    }
+  };
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [configRoutine, setConfigRoutine] = useState<Routine | null>(null);
   const [viewHabitsRoutine, setViewHabitsRoutine] = useState<Routine | null>(null);
@@ -784,12 +892,41 @@ export default function Home({
           </motion.div>
           
           <div className="space-y-1">
-            <h1 className="text-4xl md:text-6xl font-black tracking-tighter">
+            <h1 className="text-4xl md:text-6xl font-black tracking-tighter animate-fadeIn">
               Le Mie <span className="text-white/30">Routine</span>
             </h1>
-            <p className="text-white/30 font-medium md:text-xl">
-              {routines.length} percorsi energetici configurati
-            </p>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 mt-2">
+              <p className="text-white/30 font-medium md:text-xl">
+                {routines.length} percorsi energetici configurati
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleExportDataZip}
+                  disabled={exportingData || importingData}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/10 hover:border-purple-500/30 text-[10px] font-black uppercase tracking-wider transition-all disabled:opacity-50 cursor-pointer"
+                  title="Esporta tutti i dati di routine, abitudini, visioni e cronologia in uno ZIP"
+                >
+                  <Download className={`w-3.5 h-3.5 ${exportingData ? 'animate-bounce' : ''}`} /> 
+                  <span>{exportingData ? 'Esportazione...' : 'Esporta ZIP Dati'}</span>
+                </button>
+                <button
+                  onClick={() => importInputRef.current?.click()}
+                  disabled={exportingData || importingData}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-brand-cyan/10 hover:bg-brand-cyan/20 text-brand-cyan border border-brand-cyan/10 hover:border-brand-cyan/30 text-[10px] font-black uppercase tracking-wider transition-all disabled:opacity-50 cursor-pointer"
+                  title="Carica uno ZIP di backup per ripristinare tutti i tuoi dati"
+                >
+                  <Upload className={`w-3.5 h-3.5 ${importingData ? 'animate-pulse' : ''}`} /> 
+                  <span>{importingData ? 'Importazione...' : 'Importa ZIP Dati'}</span>
+                </button>
+                <input 
+                  type="file"
+                  ref={importInputRef}
+                  onChange={handleImportDataZip}
+                  accept=".zip"
+                  className="hidden"
+                />
+              </div>
+            </div>
           </div>
         </div>
 
@@ -942,6 +1079,14 @@ export default function Home({
                       className="w-full bg-black/20 border border-white/10 rounded-2xl py-4 px-6 focus:outline-none focus:border-brand-azure/50 transition-all font-black text-xl text-center text-white tracking-widest appearance-none"
                     />
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={() => window.open("https://ai.studio/apps/6aa87dc4-069d-4c9a-9c61-d219bed1f8cc", "_blank")}
+                    className="w-full py-2.5 bg-brand-azure/10 hover:bg-brand-azure/20 text-brand-azure border border-brand-azure/20 hover:border-brand-azure/40 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer mt-1"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" /> Modifica
+                  </button>
                 </div>
 
                 <div className="space-y-4 p-6 bg-white/5 rounded-3xl border border-white/5 group hover:border-brand-cyan/30 transition-all">
@@ -3608,21 +3753,23 @@ export default function Home({
 
       {/* Routine Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {/* Card "+" all'inizio di tutte le routine */}
-        <motion.div
-          layout
-          onClick={handleCreateNewRoutine}
-          className="rounded-[2.2rem] h-[310px] cursor-pointer border-2 border-dashed border-white/10 hover:border-brand-cyan/40 bg-white/[0.02] hover:bg-brand-cyan/[0.03] flex flex-col items-center justify-center p-8 text-center transition-all duration-300 group"
-          whileHover={{ y: -5, scale: 1.01 }}
-          transition={{ type: "spring", stiffness: 400, damping: 25 }}
-          title="Crea nuova routine"
-        >
-          <div className="w-16 h-16 rounded-3xl bg-white/5 border border-white/5 flex items-center justify-center text-white/30 group-hover:text-brand-cyan group-hover:bg-brand-cyan/10 group-hover:border-brand-cyan/20 transition-all duration-300 mb-4 shadow-inner">
-            <Plus className="w-8 h-8 transition-transform duration-300 group-hover:rotate-90" strokeWidth={2.5} />
-          </div>
-          <span className="text-sm font-black text-white/40 group-hover:text-white uppercase tracking-wider transition-all">Nuova Routine</span>
-          <p className="text-white/20 text-[11px] mt-1.5 transition-all group-hover:text-white/30">Configura subito un nuovo percorso</p>
-        </motion.div>
+        {/* Card "+" all'inizio di tutte le routine - visibile solo all'inizio se non ci sono routine */}
+        {routines.length === 0 && (
+          <motion.div
+            layout
+            onClick={handleCreateNewRoutine}
+            className="rounded-[2.2rem] h-[310px] cursor-pointer border-2 border-dashed border-white/10 hover:border-brand-cyan/40 bg-white/[0.02] hover:bg-brand-cyan/[0.03] flex flex-col items-center justify-center p-8 text-center transition-all duration-300 group"
+            whileHover={{ y: -5, scale: 1.01 }}
+            transition={{ type: "spring", stiffness: 400, damping: 25 }}
+            title="Crea nuova routine"
+          >
+            <div className="w-16 h-16 rounded-3xl bg-white/5 border border-white/5 flex items-center justify-center text-white/30 group-hover:text-brand-cyan group-hover:bg-brand-cyan/10 group-hover:border-brand-cyan/20 transition-all duration-300 mb-4 shadow-inner">
+              <Plus className="w-8 h-8 transition-transform duration-300 group-hover:rotate-90" strokeWidth={2.5} />
+            </div>
+            <span className="text-sm font-black text-white/40 group-hover:text-white uppercase tracking-wider transition-all">Nuova Routine</span>
+            <p className="text-white/20 text-[11px] mt-1.5 transition-all group-hover:text-white/30">Configura subito un nuovo percorso</p>
+          </motion.div>
+        )}
 
         {filteredRoutines.length > 0 ? (
           filteredRoutines.map((routine, idx) => (
@@ -3834,9 +3981,14 @@ const RoutineCard: React.FC<{
                 const status = getDeadlineStatus(routine.deadlineDate);
                 if (!status) return null;
                 return (
-                  <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider border mt-1 max-w-max leading-none drop-shadow-md backdrop-blur-md ${status.style}`}>
-                    <Calendar className="w-2.5 h-2.5 text-current shrink-0" />
-                    <span>{status.label}</span>
+                  <div className="flex flex-col gap-1.5 mt-1.5">
+                    <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider border max-w-max leading-none drop-shadow-md backdrop-blur-md ${status.style}`}>
+                      <Calendar className="w-2.5 h-2.5 text-current shrink-0" />
+                      <span>{status.label}</span>
+                    </div>
+                    <span className="text-[9px] text-white/50 pl-0.5 font-bold tracking-wider uppercase flex items-center gap-1 dropdown-shadow">
+                      scade il: {formatDeadlineDate(routine.deadlineDate)}
+                    </span>
                   </div>
                 );
               })()}

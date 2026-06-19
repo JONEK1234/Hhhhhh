@@ -76,6 +76,39 @@ async function startServer() {
     res.json({ status: "ok" });
   });
 
+  // Export App Data packaged in a ZIP containing data.json
+  app.post("/api/export-data-zip", express.json({ limit: "50mb" }), (req, res) => {
+    try {
+      const data = req.body;
+      const zip = new AdmZip();
+      zip.addFile("data.json", Buffer.from(JSON.stringify(data, null, 2), "utf-8"));
+      const buffer = zip.toBuffer();
+      res.setHeader("Content-Type", "application/zip");
+      res.setHeader("Content-Disposition", "attachment; filename=droid-routine-backup.zip");
+      res.send(buffer);
+    } catch (err) {
+      console.error("Error creating data ZIP backup:", err);
+      res.status(500).json({ error: "Impossibile generare il file ZIP con i dati" });
+    }
+  });
+
+  // Import App Data by uploading the ZIP containing data.json
+  app.post("/api/import-data-zip", express.raw({ type: "application/zip", limit: "50mb" }), (req, res) => {
+    try {
+      const zip = new AdmZip(req.body);
+      const entry = zip.getEntry("data.json");
+      if (!entry) {
+        return res.status(400).json({ error: "File data.json non trovato nello ZIP caricato" });
+      }
+      const dataStr = entry.getData().toString("utf-8");
+      const data = JSON.parse(dataStr);
+      res.json(data);
+    } catch (err) {
+      console.error("Error reading data ZIP upload:", err);
+      res.status(500).json({ error: "Impossibile decifrare il file ZIP caricato. Assicurarsi che sia un backup valido." });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
