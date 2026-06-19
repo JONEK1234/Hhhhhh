@@ -1,0 +1,6 @@
+{
+  "name": "DroidRoutine Pro",
+  "description": "Gestore di routine e abitudini avanzato con design futuristico. Include libreria di abitudini globali, raggruppamento per obiettivi e monitoraggio immersivo.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

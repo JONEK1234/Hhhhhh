@@ -1,0 +1,118 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-azure: #0ea5e9;
+  --color-brand-cyan: #22d3ee;
+  --color-brand-blue: #2563eb;
+  --color-dark-bg: #05080c;
+  --color-dark-surface: #0d1117;
+  --color-dark-soft: #1e293b;
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+}
+
+@layer base {
+  body {
+    @apply bg-dark-bg text-neutral-100 font-sans selection:bg-brand-cyan/30;
+    overflow-x: hidden;
+  }
+}
+
+@layer components {
+  .immersive-bg {
+    background: radial-gradient(circle at 50% 50%, #0a1628 0%, #05080c 100%);
+  }
+
+  .glass {
+    @apply bg-white/5 backdrop-blur-xl border border-white/10 shadow-xl;
+  }
+  
+  .glass-dark {
+    @apply bg-black/40 backdrop-blur-2xl border border-white/5 shadow-2xl;
+  }
+
+  .android-shadow {
+    box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+  }
+
+  .premium-gradient {
+    @apply bg-gradient-to-tr from-brand-cyan to-brand-blue;
+  }
+
+  .cyan-glow {
+    box-shadow: 0 0 15px rgba(6, 182, 212, 0.4);
+  }
+
+  .cyan-glow-intense {
+    box-shadow: 0 0 15px rgba(6, 182, 212, 0.6);
+  }
+}
+
+/* Custom scrollbar for webkit */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-white/20 rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-white/40;
+}
+
+.today-marker {
+  @apply relative;
+}
+
+.today-marker::after {
+  content: '';
+  @apply absolute -inset-1 border-2 border-red-500 rounded-full opacity-70;
+  border-style: solid;
+  border-width: 2px;
+  transform: rotate(-2deg);
+  box-shadow: 0 0 5px rgba(239, 68, 68, 0.3);
+  pointer-events: none;
+}
+
+/* Calendar highlight animation */
+@keyframes marker-wiggle {
+  0% { transform: scale(1) rotate(-2deg); }
+  50% { transform: scale(1.05) rotate(1deg); }
+  100% { transform: scale(1) rotate(-2deg); }
+}
+
+.marker-anim {
+  animation: marker-wiggle 3s infinite ease-in-out;
+}
+
+/* React Colorful Custom Styles */
+.react-colorful {
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 0;
+  border: none;
+}
+
+.react-colorful__saturation {
+  border-radius: 0;
+  border-bottom: none;
+}
+
+.react-colorful__hue {
+  height: 24px !important;
+  border-radius: 0 !important;
+  border: none !important;
+}
+
+.react-colorful__last-control {
+  border-radius: 0 !important;
+}
+
+.react-colorful__pointer {
+  width: 20px !important;
+  height: 20px !important;
+  border: 3px solid #fff !important;
+  box-shadow: 0 0 10px rgba(0,0,0,0.5) !important;
+}
